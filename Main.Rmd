@@ -1,0 +1,110 @@
+---
+title: "HockeyStats"
+author: "hollen"
+date: '2022-11-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(tidyverse)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r Scraping, echo = FALSE}
+rm(list=ls())
+teams <- c("ana", "bos", "buf", "cgy", "car", "chi", "col", "cbj", "dal", "det", "edm", 
+           "fla", "la", "min", "mtl", "nsh", "nj", "nyi", "nyr", "ott", 
+           "phi", "pit", "sj", "sea", "stl", "tb", "tor", "van", "vgk", "wsh", "wpg")
+baseURL <- "https://www.espn.com/nhl/team/stats/_/name/"
+endURL <- "" 
+pssColNames <- c("Name", "GP", "G", "A", "PTS", "PlusMinus", "PIM", "TOI/G", "PPG", "PPA", "SHG", "SHA", "S", "SPCT")
+essColNames <- c("Name", "GP", "G", "A", "PTS", "PlusMinus", "PIM", "SHFT", "GWG", "FW", "FL", "FOPCT", "PROD", "SOA", "SOG", "SOPCT")
+pssFirstPass <- TRUE
+essFirstPass <- TRUE
+
+for (t in teams) {
+  
+  msgTeam <- paste0("Processing data for team: ", t)
+  print(msgTeam)
+  Sys.sleep(2)
+  
+  url2scrape <- paste0(baseURL, t, endURL)
+  webPage <- read_html(url2scrape)
+  allTables <- html_table(webPage, fill = TRUE)
+  
+  pssData <- c(allTables[[1]], allTables[[2]])
+  pssData <- lapply(pssData, tail, -1)
+  pssTeam <- as.data.frame(pssData, col.names = pssColNames)
+  pssTeam <- pssTeam %>%
+    mutate(Team = t) %>%
+    filter(Name != "Total") %>%
+    mutate(GP = as.integer(as.character(GP)),
+           G = as.integer(as.character(G)),
+           A = as.integer(as.character(A)),
+           PTS = as.integer(as.character(PTS)),
+           PlusMinus = as.integer(as.character(PlusMinus)),
+           PIM = as.integer(as.character(PIM)),
+           PPG = as.integer(as.character(PPG)),
+           PPA = as.integer(as.character(PPA)),
+           SHG = as.integer(as.character(SHG)),
+           SHA = as.integer(as.character(SHA)),
+           S = as.integer(as.character(S)),
+           SPCT = as.single(as.character(SPCT)))
+  if(pssFirstPass == TRUE) {
+    pssTotal <- pssTeam
+    pssFirstPass <- FALSE
+  } else {
+    pssTotal <- rbind(pssTotal, pssTeam)
+  }
+  
+  essData <- c(allTables[[3]], allTables[[4]])
+  essData <- lapply(essData, tail, -1)
+  essTeam <- as.data.frame(essData, col.names = essColNames, stringsAsFactors = FALSE)
+  essTeam <- essTeam %>%
+    mutate(Team = t) %>%
+    filter(Name != "Total") %>%
+    mutate(GP = as.integer(as.character(GP)),
+           G = as.integer(as.character(G)),
+           A = as.integer(as.character(A)),
+           PTS = as.integer(as.character(PTS)),
+           PlusMinus = as.integer(as.character(PlusMinus)),
+           PIM = as.integer(as.character(PIM)),
+           SHFT = as.integer(as.character(SHFT)),
+           GWG = as.integer(as.character(GWG)),
+           FW = as.integer(as.character(FW)),
+           FL = as.integer(as.character(FL)),
+           FOPCT = as.single(as.character(FOPCT)),
+           SOA = as.integer(as.character(SOA)),
+           SOG = as.integer(as.character(SOG)),
+           SOPCT = as.single(as.character(SOPCT)))
+  if(essFirstPass == TRUE) {
+    essTotal <- essTeam
+    essFirstPass <- FALSE
+  } else {
+    essTotal <- rbind(essTotal, essTeam)
+  }
+  
+}
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r StoreResults, echo=FALSE}
+tm <- as.POSIXlt(Sys.time(), "UTC")
+tm <- strftime(tm, "%Y%m%dT%H%M%S")
+
+write.csv(pssTotal, file = paste0(tm, "_PSS-Data.csv"))
+write.csv(essTotal, file = paste0(tm, "_ESS-Data.csv"))
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
